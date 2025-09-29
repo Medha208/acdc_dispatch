@@ -1,4 +1,4 @@
-# ACDC Dispatch — End-to-End Notebook Workflow
+# ACDC Dispatch
 
 Tools to download NYISO interface data, process it, map it to a grid model, run time-series/power-flow, and export structured Excel results.
 
@@ -13,7 +13,7 @@ Tools to download NYISO interface data, process it, map it to a grid model, run 
 - [Export results to Excel](#export-results-to-excel)
 - [Repo layout](#repo-layout)
 - [Troubleshooting](#troubleshooting)
-- [FAQ](#faq)
+  
 
 ---
 
@@ -22,7 +22,7 @@ Tools to download NYISO interface data, process it, map it to a grid model, run 
 - Git (if installing from source)
 - (Optional) Power-flow stack:
   - **GridCal** (used by the examples)
-  - External OPF solvers (GLPK / CBC / CLP / Ipopt) — only if you plan to run OPF
+
 
 ---
 
@@ -97,7 +97,7 @@ dependencies:
   - xlsxwriter
   - pip
   - pip:
-      - gridcal
+  - gridcal
 ```
 
 Then:
@@ -194,8 +194,8 @@ res = run_power_flow(mapped_grid)
 
 ## Export results to Excel
 
-The exporter writes multiple sheets (Bus_Vmag, Bus_Vang, Bus_P, Bus_Q, Branch_Pf/Qf/Pt/Qt, Branch_Losses_P/Q, HVDC_Pf/Pt/Losses, Convergence, Names).  
-The **time column is forced to 1…T** (integers) for every sheet.
+The exporter writes multiple sheets ( Names,Bus_Vmag, Bus_Vang, Bus_P, Bus_Q, Branch_Pf/Qf/Pt/Qt, Branch_Losses_P/Q, HVDC_Pf/Pt/Losses, Convergence).  
+The **time column has 24 rows for 24 hours for every sheet.
 
 ```python
 save_dispatch_scenarios(res, "powerflow_results.xlsx", out_dir)
@@ -228,43 +228,9 @@ Harmless for PF/time-series. Install solvers only if you need OPF:
 conda install -c conda-forge glpk coincbc ipopt
 ```
 
-**`NameError: requests is not defined`**  
-Add `import requests` in any module doing HTTP requests.
-
-**`IndentationError: unindent does not match any outer indentation level`**  
-Convert all tabs to spaces (4 spaces). Most editors have “Convert Indentation to Spaces”.
-
-**`KeyError: 'YYYY-MM-DD'` when slicing daily data**  
-Use a robust day slice:
-```python
-import pandas as pd
-d = pd.to_datetime(date).normalize()
-df_day = df[(df.index >= d) & (df.index < d + pd.Timedelta(days=1))]
-```
-
 **Excel writer engine missing**  
 Install one of:
 ```bash
 pip install openpyxl xlsxwriter
 ```
 
-**Huge branch loading values**  
-Set realistic **MVA** ratings (not p.u.). For time series:
-```python
-T = len(res.time)
-for br in mapped_grid.get_branches():
-    br.rate_prof = np.full(T, 560.0, dtype=float)  # example constant rating in MVA
-```
-
----
-
-## FAQ
-
-**Q: Which interfaces are “internal”?**  
-Examples: CENTRAL EAST (aka CENT EAST), UPNY-CONED, DYSINGER EAST, MOSES SOUTH, TOTAL EAST. They’re included in the same P-32 feed as external ties; you filter by `Interface Name`.
-
-**Q: What time stamps are used by NYISO P-32?**  
-`RTD End Time Stamp` = end of 5-minute RTD interval (EPT). In our exporter, we output **1..T** instead.
-
-**Q: Units for branch ratings?**  
-**MVA**. Loading is dimensionless and computed as max(|S|)/MVA_rating.
